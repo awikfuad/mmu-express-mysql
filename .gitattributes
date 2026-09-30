@@ -1,0 +1,16 @@
+# Normalisasi line ending ke LF agar konsisten di dalam Docker image.
+* text=auto eol=lf
+
+*.js   text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.md   text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+.gitignore text eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.ico binary

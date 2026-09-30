@@ -1,0 +1,1082 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MMU A-44 API",
+    "version": "1.3.0",
+    "description": "Sistem Informasi Madrasah & Pondok (MMU A-44).\n\nAutentikasi: login mengembalikan `accessToken` (masa 15 menit) & `refreshToken` (7 hari). Kirim access token pada header `Authorization: Bearer <token>`. Untuk memperbarui token, POST ke `/api/auth/refresh-token` dengan `{ \"refreshToken\": \"...\" }`.\n\nHeader contoh:\n```\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIs...\n```"
+  },
+  "servers": [
+    { "url": "http://localhost:5000/api", "description": "Server lokal" }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Login, refresh token, logout" },
+    { "name": "Admin & Guru", "description": "Manajemen akun admin dan guru" },
+    { "name": "Data Master", "description": "Santri, kelas, murid per kelas" },
+    { "name": "Akademik", "description": "Jadwal & piket" },
+    { "name": "Presensi", "description": "Presensi kelas, kegiatan, istighosah" },
+    { "name": "Keuangan", "description": "Pembayaran iuran, tabungan, laporan" },
+    { "name": "Kesehatan", "description": "Siswi haid" },
+    { "name": "Dashboard", "description": "Statistik ringkas" },
+    { "name": "Akademik", "description": "Nilai harian & perilaku murid" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Cek kesehatan server",
+        "responses": { "200": { "description": "Server online" } }
+      }
+    },
+    "/auth/login-admin": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login admin (web)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login berhasil, mengembalikan accessToken & refreshToken"
+          },
+          "400": { "description": "Field wajib kosong" },
+          "401": { "description": "Kredensial salah" }
+        }
+      }
+    },
+    "/auth/login-teacher": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login guru",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login berhasil" },
+          "401": { "description": "Kredensial salah" }
+        }
+      }
+    },
+    "/auth/login-student": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login santri (mobile) via NIM",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["nim", "password"],
+                "properties": {
+                  "nim": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login berhasil" },
+          "401": { "description": "NIM atau password salah" }
+        }
+      }
+    },
+    "/auth/refresh-token": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Dapatkan accessToken baru",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refreshToken"],
+                "properties": { "refreshToken": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "accessToken baru" },
+          "403": { "description": "Refresh token tidak valid / kadaluwarsa" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout — mencabut refresh token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refreshToken"],
+                "properties": { "refreshToken": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Sesi dihapus" } }
+      }
+    },
+    "/register-admin": {
+      "post": {
+        "tags": ["Admin & Guru"],
+        "summary": "Daftar admin baru (khusus Super Admin/ALL)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "name", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "name": { "type": "string" },
+                  "password": { "type": "string" },
+                  "lembaga": { "type": "string", "enum": ["ALL", "MADRASAH", "TPQ"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Admin terdaftar" },
+          "403": { "description": "Bukan Super Admin" }
+        }
+      }
+    },
+    "/admins": {
+      "get": {
+        "tags": ["Admin & Guru"],
+        "summary": "Daftar admin (khusus Super Admin)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar admin" } }
+      }
+    },
+    "/register-teacher": {
+      "post": {
+        "tags": ["Admin & Guru"],
+        "summary": "Daftar guru baru",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "name", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "name": { "type": "string" },
+                  "password": { "type": "string" },
+                  "lembaga": { "type": "string", "enum": ["ALL", "MADRASAH", "TPQ"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Guru terdaftar" },
+          "400": { "description": "Username sudah terdaftar / lembaga tidak valid" }
+        }
+      }
+    },
+    "/teachers": {
+      "get": {
+        "tags": ["Admin & Guru"],
+        "summary": "Daftar guru (terscope lembaga)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar guru" } }
+      }
+    },
+    "/teachers/{id}": {
+      "put": {
+        "tags": ["Admin & Guru"],
+        "summary": "Edit guru (name, lembaga*, password) — *lembaga hanya Super Admin",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "password": { "type": "string" },
+                  "lembaga": { "type": "string", "enum": ["ALL", "MADRASAH", "TPQ"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Guru diperbarui" } }
+      },
+      "delete": {
+        "tags": ["Admin & Guru"],
+        "summary": "Hapus guru",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Guru dihapus" } }
+      }
+    },
+    "/students": {
+      "get": {
+        "tags": ["Data Master"],
+        "summary": "Daftar santri (terscope lembaga)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar santri" } }
+      },
+      "post": {
+        "tags": ["Data Master"],
+        "summary": "Tambah santri",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["nim", "name"],
+                "properties": {
+                  "nim": { "type": "string" },
+                  "name": { "type": "string" },
+                  "password": { "type": "string" },
+                  "academic_year_id": { "type": "integer" },
+                  "jenjang_id": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Santri dibuat" },
+          "400": { "description": "NIM sudah terdaftar / validasi gagal" }
+        }
+      }
+    },
+    "/students/{id}": {
+      "put": {
+        "tags": ["Data Master"],
+        "summary": "Edit santri",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Santri diperbarui" } }
+      },
+      "delete": {
+        "tags": ["Data Master"],
+        "summary": "Hapus santri",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Santri dihapus" } }
+      }
+    },
+    "/students/{id}/status": {
+      "put": {
+        "tags": ["Data Master"],
+        "summary": "Ubah status aktif/non-aktif santri",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": { "status": { "type": "string", "enum": ["0", "1"] } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Status diperbarui" } }
+      }
+    },
+    "/students/filter-options": {
+      "get": {
+        "tags": ["Data Master"],
+        "summary": "Dropdown jenjang/kelas/rombel/guru (terscope)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Opsi filter" } }
+      }
+    },
+    "/muridKelas": {
+      "get": {
+        "tags": ["Data Master"],
+        "summary": "Daftar murid per kelas (terscope)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar murid kelas" } }
+      },
+      "post": {
+        "tags": ["Data Master"],
+        "summary": "Tambah murid ke kelas",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["nim", "name"],
+                "properties": {
+                  "nim": { "type": "string" },
+                  "name": { "type": "string" },
+                  "classroom_id": { "type": "integer" },
+                  "jenis_kelamin": { "type": "string", "enum": ["LAKI-LAKI", "PEREMPUAN"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Murid kelas dibuat" } }
+      }
+    },
+    "/muridKelas/{nim}": {
+      "get": {
+        "tags": ["Data Master"],
+        "summary": "Detail murid kelas by NIM (dipakai app santri)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "nim", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Data murid" } }
+      }
+    },
+    "/classrooms": {
+      "get": {
+        "tags": ["Data Master"],
+        "summary": "Daftar ruang kelas (terscope)",
+        "responses": { "200": { "description": "Daftar kelas" } }
+      },
+      "post": {
+        "tags": ["Data Master"],
+        "summary": "Tambah ruang kelas",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["class_name"],
+                "properties": { "class_name": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Kelas dibuat" } }
+      }
+    },
+    "/classrooms/filter-options": {
+      "get": {
+        "tags": ["Data Master"],
+        "summary": "Dropdown tahun ajaran + jenjang (terscope)",
+        "responses": { "200": { "description": "Opsi filter" } }
+      }
+    },
+    "/createSchedule": {
+      "post": {
+        "tags": ["Akademik"],
+        "summary": "Buat jadwal pelajaran",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["classroom_id", "subject_id", "day_of_week", "start_time", "end_time", "main_teacher_id"],
+                "properties": {
+                  "classroom_id": { "type": "integer" },
+                  "subject_id": { "type": "integer" },
+                  "day_of_week": { "type": "string", "enum": ["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "AHAD"] },
+                  "start_time": { "type": "string", "example": "07:30" },
+                  "end_time": { "type": "string", "example": "09:00" },
+                  "main_teacher_id": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Jadwal dibuat" } }
+      }
+    },
+    "/schedules/my-today": {
+      "get": {
+        "tags": ["Akademik"],
+        "summary": "Jadwal guru hari ini",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Jadwal hari ini" } }
+      }
+    },
+    "/schedulesAll/{tahun}": {
+      "get": {
+        "tags": ["Akademik"],
+        "summary": "Semua jadwal per tahun ajaran (terscope)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "tahun", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Daftar jadwal" } }
+      }
+    },
+    "/schedules/assign-piket": {
+      "post": {
+        "tags": ["Akademik"],
+        "summary": "Tugaskan guru pengganti/piket",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["schedule_id"],
+                "properties": {
+                  "schedule_id": { "type": "integer" },
+                  "substitute_teacher_id": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Piket ditugaskan / dikembalikan" } }
+      }
+    },
+    "/attendances": {
+      "post": {
+        "tags": ["Presensi"],
+        "summary": "Catat presensi kelas per sesi (upsert, tidak dobel)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["student_id", "session_name", "status", "schedule_id"],
+                "properties": {
+                  "student_id": { "type": "integer" },
+                  "session_name": { "type": "string", "enum": ["SUBUH", "PAGI", "SIANG", "MALAM"] },
+                  "status": { "type": "string", "enum": ["HADIR", "SAKIT", "IZIN", "ALPA"] },
+                  "schedule_id": { "type": "integer" },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Presensi tercatat" } }
+      }
+    },
+    "/activities": {
+      "get": {
+        "tags": ["Presensi"],
+        "summary": "Daftar kegiatan umum (terscope)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar kegiatan" } }
+      },
+      "post": {
+        "tags": ["Presensi"],
+        "summary": "Buat kegiatan",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["activity_name", "activity_date"],
+                "properties": {
+                  "activity_name": { "type": "string" },
+                  "activity_date": { "type": "string", "example": "2026-08-15" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Kegiatan dibuat" } }
+      }
+    },
+    "/activities/attendance": {
+      "post": {
+        "tags": ["Presensi"],
+        "summary": "Catat presensi kegiatan",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["activity_id", "student_id", "status"],
+                "properties": {
+                  "activity_id": { "type": "integer" },
+                  "student_id": { "type": "integer" },
+                  "status": { "type": "string", "enum": ["HADIR", "SAKIT", "IZIN", "ALPA"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Presensi tercatat" } }
+      }
+    },
+    "/kegiatan": {
+      "get": {
+        "tags": ["Presensi"],
+        "summary": "Daftar kegiatan istighosah (terscope)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar kegiatan istighosah" } }
+      },
+      "post": {
+        "tags": ["Presensi"],
+        "summary": "Buat kegiatan istighosah",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["activity_name", "activity_date"],
+                "properties": {
+                  "activity_name": { "type": "string" },
+                  "activity_date": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Kegiatan dibuat" } }
+      }
+    },
+    "/kegiatan/attendance": {
+      "post": {
+        "tags": ["Presensi"],
+        "summary": "Catat absensi istighosah via NIM",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["activity_id", "nim", "status"],
+                "properties": {
+                  "activity_id": { "type": "integer" },
+                  "nim": { "type": "string" },
+                  "status": { "type": "string", "enum": ["HADIR", "SAKIT", "IZIN", "ALPA"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Absensi tercatat" } }
+      }
+    },
+    "/kegiatan/log-manual": {
+      "post": {
+        "tags": ["Presensi"],
+        "summary": "Catat kegiatan istighosah manual (pengurus)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["activity_name", "activity_date"],
+                "properties": {
+                  "activity_name": { "type": "string" },
+                  "activity_date": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Kegiatan tercatat" } }
+      }
+    },
+    "/kegiatan/teacher-attendance": {
+      "post": {
+        "tags": ["Presensi"],
+        "summary": "Catat kehadiran guru/asatidz pada kegiatan",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["kegiatan_id", "teacher_id", "status"],
+                "properties": {
+                  "kegiatan_id": { "type": "integer" },
+                  "teacher_id": { "type": "integer" },
+                  "status": { "type": "string", "enum": ["HADIR", "SAKIT", "IZIN", "ALPA"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Kehadiran guru tercatat" } }
+      }
+    },
+    "/kegiatan/report/{kegiatan_id}": {
+      "get": {
+        "tags": ["Presensi"],
+        "summary": "Rekap presensi kegiatan istighosah",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "kegiatan_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Rekap presensi" } }
+      }
+    },
+    "/kegiatan/report/export/{kegiatan_id}": {
+      "get": {
+        "tags": ["Presensi"],
+        "summary": "Roster lengkap murid & santri untuk absen manual (mobile)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "kegiatan_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Roster lengkap" } }
+      }
+    },
+    "/kegiatan/report/teacher/{kegiatan_id}": {
+      "get": {
+        "tags": ["Presensi"],
+        "summary": "Rekap kehadiran guru pada kegiatan",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "kegiatan_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Rekap guru" } }
+      }
+    },
+    "/payments/transactions": {
+      "get": {
+        "tags": ["Keuangan"],
+        "summary": "Riwayat pembayaran (terscope)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar transaksi" } }
+      },
+      "post": {
+        "tags": ["Keuangan"],
+        "summary": "Input pembayaran iuran (multipart/form-data)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["student_id"],
+                "properties": {
+                  "student_id": { "type": "integer" },
+                  "pay_yaumiyah": { "type": "integer", "example": 1 },
+                  "yaumiyah_month": { "type": "string", "example": "Juni" },
+                  "yaumiyah_amount": { "type": "number" },
+                  "pay_daftar_ulang": { "type": "integer" },
+                  "daftar_ulang_amount": { "type": "number" },
+                  "payment_method": { "type": "string", "enum": ["CASH", "TRANSFER"] },
+                  "transfer_note": { "type": "string" },
+                  "transfer_proof": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Pembayaran tercatat" },
+          "400": { "description": "Validasi gagal / nominal tidak valid" }
+        }
+      }
+    },
+    "/payments/history/{student_id}": {
+      "get": {
+        "tags": ["Keuangan"],
+        "summary": "Riwayat pembayaran per santri",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "student_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Riwayat pembayaran" } }
+      }
+    },
+    "/savings/transaction": {
+      "post": {
+        "tags": ["Keuangan"],
+        "summary": "Input transaksi tabungan (SETORAN/PENARIKAN)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["student_id", "transaction_type", "amount"],
+                "properties": {
+                  "student_id": { "type": "integer" },
+                  "transaction_type": { "type": "string", "enum": ["SETORAN", "PENARIKAN"] },
+                  "amount": { "type": "number" },
+                  "notes": { "type": "string" },
+                  "bulan_hijriah": { "type": "string" },
+                  "tahun_hijriah": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Transaksi tercatat" } }
+      }
+    },
+    "/savings/transactions": {
+      "get": {
+        "tags": ["Keuangan"],
+        "summary": "Riwayat tabungan (terscope)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar transaksi tabungan" } }
+      }
+    },
+    "/savings/dashboard/{student_id}": {
+      "get": {
+        "tags": ["Keuangan"],
+        "summary": "Dashboard tabungan santri",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "student_id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Saldo & riwayat tabungan" } }
+      }
+    },
+    "/reports/finance": {
+      "get": {
+        "tags": ["Keuangan"],
+        "summary": "Laporan keuangan bulanan (terscope) — payments, savings, kas",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Laporan keuangan" } }
+      }
+    },
+    "/accounts": {
+      "get": {
+        "tags": ["Kas & Jurnal"],
+        "summary": "Daftar akun COA (terscope lembaga)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar akun" } }
+      },
+      "post": {
+        "tags": ["Kas & Jurnal"],
+        "summary": "Tambah akun",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["account_code", "account_name", "account_type"],
+                "properties": {
+                  "account_code": { "type": "string", "example": "601" },
+                  "account_name": { "type": "string", "example": "Kas Pembangunan" },
+                  "account_type": { "type": "string", "enum": ["KAS", "BANK", "PIUTANG", "PENDAPATAN", "BEBAN"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Akun berhasil ditambahkan" } }
+      }
+    },
+    "/accounts/{id}": {
+      "put": {
+        "tags": ["Kas & Jurnal"],
+        "summary": "Edit akun",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Akun berhasil diubah" } }
+      },
+      "delete": {
+        "tags": ["Kas & Jurnal"],
+        "summary": "Hapus akun (akun sistem & yg terpakai ditolak)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Akun berhasil dihapus" } }
+      }
+    },
+    "/kas/transactions": {
+      "get": {
+        "tags": ["Kas & Jurnal"],
+        "summary": "Riwayat jurnal kas (filter month YYYY-MM & account_code)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar transaksi kas" } }
+      },
+      "post": {
+        "tags": ["Kas & Jurnal"],
+        "summary": "Input kas keluar/masuk (KELUAR divalidasi saldo kas)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["account_code", "description", "type", "amount"],
+                "properties": {
+                  "account_code": { "type": "string", "example": "401" },
+                  "description": { "type": "string" },
+                  "type": { "type": "string", "enum": ["MASUK", "KELUAR"] },
+                  "amount": { "type": "number", "example": 50000 },
+                  "date": { "type": "string", "format": "date" },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Transaksi kas berhasil dicatat" } }
+      }
+    },
+    "/kas/transactions/{id}": {
+      "delete": {
+        "tags": ["Kas & Jurnal"],
+        "summary": "Hapus jurnal kas",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Transaksi berhasil dihapus" } }
+      }
+    },
+    "/kas/report": {
+      "get": {
+        "tags": ["Kas & Jurnal"],
+        "summary": "Rekonsiliasi KAS bulanan (saldo awal/masuk/keluar/akhir per akun)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "month", "in": "query", "schema": { "type": "string", "example": "2026-05" } }],
+        "responses": { "200": { "description": "Rekap kas" } }
+      }
+    },
+    "/siswi-haid": {
+      "get": {
+        "tags": ["Kesehatan"],
+        "summary": "Data siswi haid (terscope)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Daftar siswi haid" } }
+      },
+      "post": {
+        "tags": ["Kesehatan"],
+        "summary": "Tambah data siswi haid",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["nim", "nama", "kelas", "adat", "tanggal_mulai_haid"],
+                "properties": {
+                  "nim": { "type": "string" },
+                  "nama": { "type": "string" },
+                  "kelas": { "type": "string" },
+                  "adat": { "type": "integer", "example": 7 },
+                  "tanggal_mulai_haid": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Data tersimpan" } }
+      }
+    },
+    "/dashboard/stats": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Statistik dashboard (terscope lembaga)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Statistik ringkas" } }
+      }
+    },
+    "/test-db": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Cek koneksi database",
+        "responses": { "200": { "description": "Koneksi DB OK" } }
+      }
+    },
+    "/nilai-harian": {
+      "get": {
+        "tags": ["Akademik"],
+        "summary": "List catatan nilai harian (filter subject_id, tanggal, classroom_id)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "subject_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "tanggal", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "classroom_id", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Daftar catatan nilai" } }
+      }
+    },
+    "/nilai-harian/bulk": {
+      "post": {
+        "tags": ["Akademik"],
+        "summary": "Simpan nilai harian massal (UPSERT per murid per mapel per tanggal)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["subject_id", "tanggal", "items"],
+                "properties": {
+                  "academic_year_id": { "type": "integer" },
+                  "jenjang_id": { "type": "integer" },
+                  "classroom_id": { "type": "integer" },
+                  "subject_id": { "type": "integer" },
+                  "tanggal": { "type": "string", "format": "date" },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["murid_id", "nilai"],
+                      "properties": {
+                        "murid_id": { "type": "integer" },
+                        "nim": { "type": "string" },
+                        "sumber": { "type": "string", "enum": ["madrasah", "tpq"] },
+                        "nilai": { "type": "number", "minimum": 0, "maximum": 100 },
+                        "keterangan": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Jumlah nilai tersimpan" } }
+      }
+    },
+    "/nilai-harian/{id}": {
+      "delete": {
+        "tags": ["Akademik"],
+        "summary": "Hapus catatan nilai harian (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Data terhapus" }, "404": { "description": "Tidak ditemukan" } }
+      }
+    },
+    "/perilaku-murid": {
+      "get": {
+        "tags": ["Akademik"],
+        "summary": "List catatan perilaku murid (filter tanggal, kategori, classroom_id)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "tanggal", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "kategori", "in": "query", "schema": { "type": "string" } },
+          { "name": "classroom_id", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Daftar catatan perilaku" } }
+      }
+    },
+    "/perilaku-murid/bulk": {
+      "post": {
+        "tags": ["Akademik"],
+        "summary": "Simpan perilaku murid massal (UPSERT per murid per kategori per tanggal)",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["kategori", "predikat", "tanggal", "items"],
+                "properties": {
+                  "academic_year_id": { "type": "integer" },
+                  "jenjang_id": { "type": "integer" },
+                  "classroom_id": { "type": "integer" },
+                  "kategori": { "type": "string" },
+                  "predikat": { "type": "string" },
+                  "tanggal": { "type": "string", "format": "date" },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["murid_id"],
+                      "properties": {
+                        "murid_id": { "type": "integer" },
+                        "nim": { "type": "string" },
+                        "sumber": { "type": "string", "enum": ["madrasah", "tpq"] },
+                        "predikat": { "type": "string" },
+                        "catatan": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Jumlah data tersimpan" } }
+      }
+    },
+    "/perilaku-murid/{id}": {
+      "put": {
+        "tags": ["Akademik"],
+        "summary": "Ubah predikat/catatan perilaku murid",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "predikat": { "type": "string" },
+                  "catatan": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Data terubah" }, "404": { "description": "Tidak ditemukan" } }
+      },
+      "delete": {
+        "tags": ["Akademik"],
+        "summary": "Hapus catatan perilaku murid (admin)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Data terhapus" }, "404": { "description": "Tidak ditemukan" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

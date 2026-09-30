@@ -1,0 +1,165 @@
+name: mmu-express-mysql
+
+x-casaos:
+  title: MMU Express MySQL
+  name: mmu-express-mysql
+  description: Backend API MMU (Express 5 + MySQL) untuk sistem manajemen sekolah/madrasah.
+  icon: https://cdn.jsdelivr.net/gh/selfhst/icons/png/mysql.png
+  category: productivity
+  author: awikfuad
+  version: 1.0.0
+  index: mmu-express-mysql
+  main:
+    services:
+      - backend
+      - db
+  port_map:
+    - 5000
+  env:
+    - key: DOCKERHUB_IMAGE
+      name: Docker Hub Image
+      description: Nama image di Docker Hub.
+      required: false
+      default: awikfuad/mmu-express-mysql:latest
+      type: string
+    - key: HTTP_PORT
+      name: Port HTTP
+      description: Port host untuk mengakses API backend.
+      required: false
+      default: 5000
+      type: port
+    - key: JWT_SECRET
+      name: JWT Secret
+      description: Kunci rahasia token access. Buat acak minimal 48 karakter.
+      required: true
+      type: password
+    - key: JWT_REFRESH_SECRET
+      name: JWT Refresh Secret
+      description: Kunci rahasia token refresh. Wajib berbeda dari JWT_SECRET.
+      required: true
+      type: password
+    - key: DEFAULT_RESET_PASSWORD
+      name: Default Reset Password
+      description: Password awal akun santri dan fitur reset password.
+      required: false
+      default: santri123
+      type: password
+    - key: CORS_ORIGIN
+      name: CORS Origin
+      description: 'Gunakan "*" untuk semua origin, atau daftar origin dipisah koma.'
+      required: false
+      default: "*"
+      type: string
+    - key: TRUST_PROXY
+      name: Trust Proxy
+      description: true bila di belakang reverse proxy (ZimaOS, Nginx, Cloudflare).
+      required: false
+      default: "true"
+      type: string
+    - key: GOOGLE_CLIENT_ID
+      name: Google Client ID
+      description: Kosongkan bila login Google tidak dipakai.
+      required: false
+      type: string
+    - key: CLOUDINARY_CLOUD_NAME
+      name: Cloudinary Cloud Name
+      description: Kosongkan untuk menyimpan file lokal di volume uploads.
+      required: false
+      type: string
+    - key: CLOUDINARY_API_KEY
+      name: Cloudinary API Key
+      required: false
+      type: string
+    - key: CLOUDINARY_API_SECRET
+      name: Cloudinary API Secret
+      required: false
+      type: password
+    - key: MYSQL_ROOT_PASSWORD
+      name: MySQL Root Password
+      description: Password root MySQL di dalam container.
+      required: true
+      type: password
+    - key: MYSQL_DATABASE
+      name: MySQL Database
+      required: false
+      default: mmu_a44
+      type: string
+  tips:
+    - "Cek API: http://<IP-NAS>:<HTTP_PORT>/api/health"
+    - "Data MySQL disimpan di named volume mmu_mysql_data, jangan dihapus."
+    - "Bukti transfer tersimpan di volume mmu_uploads (atau Cloudinary bila dikonfigurasi)."
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mmu-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD wajib diisi}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mmu_a44}
+      TZ: Asia/Jakarta
+    volumes:
+      - mmu_mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [mmu]
+
+  backend:
+    image: ${DOCKERHUB_IMAGE:-awikfuad/mmu-express-mysql:latest}
+    container_name: mmu-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      TZ: Asia/Jakarta
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD wajib diisi}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mmu_a44}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET wajib diisi}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET wajib diisi}
+      DEFAULT_RESET_PASSWORD: ${DEFAULT_RESET_PASSWORD:-santri123}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    ports:
+      - "${HTTP_PORT:-5000}:5000"
+    volumes:
+      - mmu_uploads:/app/public/uploads
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:5000/api/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks: [mmu]
+
+volumes:
+  mmu_mysql_data:
+  mmu_uploads:
+
+networks:
+  mmu:
+    driver: bridge

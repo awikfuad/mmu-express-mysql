@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MMU A-44 — Dokumentasi API</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    body { margin: 0; background: #1e1e2e; }
+    .topbar { background: #11111b; padding: 12px 24px; color: #cdd6f4; font-family: monospace; font-size: 14px; }
+    .topbar b { color: #89b4fa; }
+  </style>
+</head>
+<body>
+  <div class="topbar"><b>MMU A-44</b> — Dokumentasi API Backend (Swagger UI)</div>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/api-docs.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIBundle.SwaggerUIStandalonePreset
+        ],
+        layout: 'BaseLayout'
+      });
+    };
+  </script>
+</body>
+</html>
