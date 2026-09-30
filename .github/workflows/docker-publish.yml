@@ -33,8 +33,10 @@ jobs:
       # dibuild (validasi Dockerfile) tanpa di-push.
       - name: Tentukan mode push
         id: mode
+        env:
+          TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          if [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+          if [ -n "$TOKEN" ]; then
             echo "push=true" >> "$GITHUB_OUTPUT"
           else
             echo "push=false" >> "$GITHUB_OUTPUT"
