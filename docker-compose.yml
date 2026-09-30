@@ -1,58 +1,64 @@
 name: mmu-express-mysql
 
 x-casaos:
-  title: MMU Express MySQL
-  name: mmu-express-mysql
-  description: Backend API MMU (Express 5 + MySQL) untuk sistem manajemen sekolah/madrasah.
+  id: id.awikfuad.mmu-express-mysql
+  main: backend
+  index: /
+  port_map: "5000"
+  scheme: http
   icon: https://cdn.jsdelivr.net/gh/selfhst/icons/png/mysql.png
-  category: productivity
+  title:
+    en_US: MMU Express MySQL
+  tagline:
+    en_US: Backend API MMU (Express 5 + MySQL)
+  description:
+    en_US: Backend API untuk sistem manajemen sekolah/madrasah MMU A-44.
   author: awikfuad
-  version: 1.0.0
-  index: mmu-express-mysql
-  main:
-    services:
-      - backend
-      - db
-  port_map:
-    - 5000
+  developer: awikfuad
+  category: Productivity
+  architectures:
+    - amd64
+    - arm64
+  version: "1.0.0"
+  update_at: "2026-09-30"
+  release_notes:
+    en_US: Rilis awal backend MMU dengan MySQL.
+  tips:
+    before_install:
+      en_US: "Setelah install, cek http://<IP-NAS>:5000/api/health"
   env:
-    - key: DOCKERHUB_IMAGE
-      name: Docker Hub Image
-      description: Nama image di Docker Hub.
-      required: false
-      default: awikfuad/mmu-express-mysql:latest
-      type: string
     - key: HTTP_PORT
       name: Port HTTP
-      description: Port host untuk mengakses API backend.
+      description: Port di NAS untuk mengakses API backend.
       required: false
       default: 5000
       type: port
+    - key: MYSQL_ROOT_PASSWORD
+      name: MySQL Root Password
+      required: true
+      type: password
     - key: JWT_SECRET
       name: JWT Secret
-      description: Kunci rahasia token access. Buat acak minimal 48 karakter.
       required: true
       type: password
     - key: JWT_REFRESH_SECRET
       name: JWT Refresh Secret
-      description: Kunci rahasia token refresh. Wajib berbeda dari JWT_SECRET.
       required: true
       type: password
     - key: DEFAULT_RESET_PASSWORD
       name: Default Reset Password
-      description: Password awal akun santri dan fitur reset password.
+      description: Password awal untuk akun santri baru.
       required: false
       default: santri123
       type: password
     - key: CORS_ORIGIN
       name: CORS Origin
-      description: 'Gunakan "*" untuk semua origin, atau daftar origin dipisah koma.'
+      description: Gunakan * untuk semua origin, atau daftar origin dipisah koma.
       required: false
       default: "*"
       type: string
     - key: TRUST_PROXY
       name: Trust Proxy
-      description: true bila di belakang reverse proxy (ZimaOS, Nginx, Cloudflare).
       required: false
       default: "true"
       type: string
@@ -63,7 +69,6 @@ x-casaos:
       type: string
     - key: CLOUDINARY_CLOUD_NAME
       name: Cloudinary Cloud Name
-      description: Kosongkan untuk menyimpan file lokal di volume uploads.
       required: false
       type: string
     - key: CLOUDINARY_API_KEY
@@ -74,20 +79,6 @@ x-casaos:
       name: Cloudinary API Secret
       required: false
       type: password
-    - key: MYSQL_ROOT_PASSWORD
-      name: MySQL Root Password
-      description: Password root MySQL di dalam container.
-      required: true
-      type: password
-    - key: MYSQL_DATABASE
-      name: MySQL Database
-      required: false
-      default: mmu_a44
-      type: string
-  tips:
-    - "Cek API: http://<IP-NAS>:<HTTP_PORT>/api/health"
-    - "Data MySQL disimpan di named volume mmu_mysql_data, jangan dihapus."
-    - "Bukti transfer tersimpan di volume mmu_uploads (atau Cloudinary bila dikonfigurasi)."
 
 services:
   db:
@@ -141,7 +132,10 @@ services:
       CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
       CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
     ports:
-      - "${HTTP_PORT:-5000}:5000"
+      - target: 5000
+        published: "${HTTP_PORT:-5000}"
+        protocol: tcp
+        mode: host
     volumes:
       - mmu_uploads:/app/public/uploads
     healthcheck:

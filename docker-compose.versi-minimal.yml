@@ -1,0 +1,86 @@
+name: mmu-express-mysql
+
+# Versi minimal: TANPA blok x-casaos, karena sebagian versi ZimaOS gagal
+# mem-parse metadata tersebut dan menolak install.
+#
+# Pakai file ini di ZimaOS (Docker > App > Custom App) bila docker-compose.yml
+# ditolak. Isi nilainya lewat form ZimaOS, atau lewat file .env di samping
+# file ini.
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mmu-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD wajib diisi}
+      MYSQL_DATABASE: mmu_a44
+      TZ: Asia/Jakarta
+    volumes:
+      - mmu_mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [mmu]
+
+  backend:
+    image: ${DOCKERHUB_IMAGE:-awikfuad/mmu-express-mysql:latest}
+    container_name: mmu-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      TZ: Asia/Jakarta
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD wajib diisi}
+      MYSQL_DATABASE: mmu_a44
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET wajib diisi}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET wajib diisi}
+      DEFAULT_RESET_PASSWORD: santri123
+      CORS_ORIGIN: "*"
+      TRUST_PROXY: "true"
+      GOOGLE_CLIENT_ID: ""
+      CLOUDINARY_CLOUD_NAME: ""
+      CLOUDINARY_API_KEY: ""
+      CLOUDINARY_API_SECRET: ""
+    ports:
+      - target: 5000
+        published: "${HTTP_PORT:-5000}"
+        protocol: tcp
+        mode: host
+    volumes:
+      - mmu_uploads:/app/public/uploads
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:5000/api/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks: [mmu]
+
+volumes:
+  mmu_mysql_data:
+  mmu_uploads:
+
+networks:
+  mmu:
+    driver: bridge

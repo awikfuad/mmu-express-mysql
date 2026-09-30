@@ -8,7 +8,8 @@ Backend API untuk sistem manajemen sekolah/madrasah MMU A-44.
 
 ## Deploy di ZimaOS (paling mudah)
 
-1. **Docker → App → Custom App**, tempel isi `docker-compose.yml` dari repo ini.
+1. **Docker → App → Custom App**, tempel `docker-compose.yml` dari repo ini.
+   ZimaOS akan membaca blok `x-casaos` dan menampilkan form password otomatis.
 2. Isi environment minimal:
 
    | Key | Keterangan |
@@ -25,6 +26,10 @@ Backend API untuk sistem manajemen sekolah/madrasah MMU A-44.
 
 3. Klik **Install**. ZimaOS akan pull image dari Docker Hub lalu start container.
 4. Cek: `http://<IP-NAS>:5000/api/health` → `{"status":"online",...}`
+
+> **Kalau ZimaOS menolak YAML-nya** ("error(s) decoding"), pakai `docker-compose.versi-minimal.yml`
+> dari repo ini — isinya sama persis tanpa blok `x-casaos`, jadi tidak ada metadata
+> yang perlu diparse. Passwordnya sudah tertanam di dalamnya.
 
 Tabel database dibuat otomatis saat container pertama kali start
 (`CREATE TABLE IF NOT EXISTS` di `src/config/db.js`), dan akun admin
